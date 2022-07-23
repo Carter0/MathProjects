@@ -91,7 +91,7 @@ fn check_if_player_in_square(
     // Get the vector from the player to the rectangle
     let dist_p_to_r_vec: Vec3 = player_transform.translation - rect_transform.translation;
 
-    // Do the pythagoreian theorum to get the magnitude or length of the vector
+    // Do the pythagorean theorum to get the magnitude or length of the vector
     let magnitude_dist = f32::sqrt(dist_p_to_r_vec.x.powf(2.0) + dist_p_to_r_vec.y.powf(2.0)).abs();
 
     // If the length of the vector is less than the the side of the square / 2, its inside the square
