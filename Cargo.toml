@@ -1,0 +1,7 @@
+[workspace]
+# It needs this for some reason
+resolver = "2"
+
+members = [
+    "assignment1",
+]
