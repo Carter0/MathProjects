@@ -1,9 +1,5 @@
 use bevy::prelude::*;
 
-
-// TODO come back when you can draw a vector that rotates across the screen for easier visualization
-// But still, I got it right
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -11,10 +7,9 @@ fn main() {
         .add_startup_system(add_rectangle)
         .add_startup_system(add_moving_rectangle)
         .add_system(move_player)
-        .add_system(calculate_if_player_facing_rect)
+        .add_system(calculate_coordinates)
         .run();
 }
-
 
 // Show origin of the screen for easier visualization
 fn show_origin(mut commands: Commands) {
@@ -22,15 +17,13 @@ fn show_origin(mut commands: Commands) {
         .spawn()
         .insert_bundle(OrthographicCameraBundle::new_2d());
 
-    commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(4.0, 4.0)),
-                ..Default::default()
-            },
+    commands.spawn_bundle(SpriteBundle {
+        sprite: Sprite {
+            custom_size: Some(Vec2::new(4.0, 4.0)),
             ..Default::default()
-        });
-
+        },
+        ..Default::default()
+    });
 }
 
 #[derive(Component)]
@@ -96,27 +89,29 @@ fn move_player(
     }
 }
 
-fn calculate_if_player_facing_rect(
-    player_query: Query<&Transform, (With<Player>, Without<Rect>)>,
-    mut rect_query: Query<(&Transform, &mut Sprite), With<Rect>>,
+// Transform between local and global coordinate space
+// TODO figure out how to do the rotation as well
+fn calculate_coordinates(
+    player_query: Query<&Transform, With<Player>>,
+    rect_query: Query<&Transform, (With<Rect>, Without<Player>)>,
 ) {
     let player_transform = player_query
         .get_single()
         .expect("Error: Could not find a single player.");
 
-    let (rect_transform, mut rect_sprite) = rect_query
-        .get_single_mut()
+    let rect_transform = rect_query
+        .get_single()
         .expect("Error: Could not find a single rect.");
 
-    // Make sure both vectors are normalized so the dot product is between 0 and 1/-1.
-    let normalized_player_translation = player_transform.translation.normalize_or_zero();
-    let normalized_rect_translation = rect_transform.translation.normalize_or_zero();
+    println!("Global coordinates of player ({}, {})", player_transform.translation.x, player_transform.translation.y);
 
-    let dot_product = normalized_player_translation.x * normalized_rect_translation.x
-        + normalized_player_translation.y * normalized_rect_translation.y;
+    let local_coords_relative_to_rect = rect_transform.translation - player_transform.translation;
 
-    // Rect color gets darker the less the player faces the rect
-    // And the rect color gets bright the more the player faces the rect
-    println!("Dot product is {}", dot_product);
-    rect_sprite.color = Color::rgb(dot_product, dot_product, dot_product);
+
+    println!("Local coordinates of player to the rect ({}, {})", local_coords_relative_to_rect.x, local_coords_relative_to_rect.y);
+
+
+    let back_to_global_transform = rect_transform.translation - local_coords_relative_to_rect;
+
+    println!("Global coords of player again ({}, {})", back_to_global_transform.x, back_to_global_transform.y);
 }

@@ -4,5 +4,6 @@ resolver = "2"
 
 members = [
     "assignment1",
-    "assignment2"
+    "assignment2",
+    "assignment3"
 ]
