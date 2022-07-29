@@ -5,9 +5,9 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_startup_system(show_origin)
         .add_startup_system(add_rectangle)
-        .add_startup_system(add_moving_rectangle)
+        .add_startup_system(add_player)
         .add_system(move_player)
-        .add_system(calculate_coordinates)
+        .add_system(rotate_player)
         .run();
 }
 
@@ -45,21 +45,26 @@ fn add_rectangle(mut commands: Commands) {
 // The float value is the player movement speed in 'pixels/second'.
 #[derive(Component)]
 struct Player {
-    pub speed: f32,
+    speed: f32,
+    rotation_speed: f32,
 }
 
-fn add_moving_rectangle(mut commands: Commands) {
+fn add_player(mut commands: Commands) {
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
-                custom_size: Some(Vec2::new(10.0, 10.0)),
+                custom_size: Some(Vec2::new(30.0, 30.0)),
                 color: Color::ORANGE,
                 ..Default::default()
             },
             transform: Transform::from_translation(Vec3::new(120.0, 0.0, 0.0)),
             ..Default::default()
         })
-        .insert(Player { speed: 300.0 });
+        .insert(Player {
+            speed: 300.0,
+            // degrees per second
+            rotation_speed: f32::to_radians(360.0),
+        });
 }
 
 fn move_player(
@@ -89,29 +94,33 @@ fn move_player(
     }
 }
 
-// Transform between local and global coordinate space
-// TODO figure out how to do the rotation as well
-fn calculate_coordinates(
-    player_query: Query<&Transform, With<Player>>,
-    rect_query: Query<&Transform, (With<Rect>, Without<Player>)>,
+fn rotate_player(
+    keyboard_input: Res<Input<KeyCode>>,
+    mut player_query: Query<(&Player, &mut Transform)>,
+    time: Res<Time>
 ) {
-    let player_transform = player_query
-        .get_single()
-        .expect("Error: Could not find a single player.");
+    let (player, mut transform) = player_query
+        .get_single_mut()
+        .expect("Could not find a single player");
 
-    let rect_transform = rect_query
-        .get_single()
-        .expect("Error: Could not find a single rect.");
+    let mut rotation_factor = 0.0;
 
-    println!("Global coordinates of player ({}, {})", player_transform.translation.x, player_transform.translation.y);
+    if keyboard_input.pressed(KeyCode::J) {
+        rotation_factor += 1.0;
+    }
 
-    let local_coords_relative_to_rect = rect_transform.translation - player_transform.translation;
+    if keyboard_input.pressed(KeyCode::K) {
+        rotation_factor -= 1.0;
+    }
 
+    println!("rotation factor is {}", rotation_factor);
 
-    println!("Local coordinates of player to the rect ({}, {})", local_coords_relative_to_rect.x, local_coords_relative_to_rect.y);
-
-
-    let back_to_global_transform = rect_transform.translation - local_coords_relative_to_rect;
-
-    println!("Global coords of player again ({}, {})", back_to_global_transform.x, back_to_global_transform.y);
+    // update the player rotation around the Z axis (perpendicular to the 2D plane of the screen)
+    let delta_time = time.delta_seconds();
+    transform.rotate(Quat::from_rotation_z(rotation_factor * player.rotation_speed * delta_time));
 }
+
+// TODO
+// 2. Set the cube to be a child of the player
+// 3. Draw a rect from the origin to the cube and
+//    show the global coordinates of the vector using vector math.
