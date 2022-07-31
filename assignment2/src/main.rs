@@ -18,9 +18,7 @@ fn main() {
 
 // Show origin of the screen for easier visualization
 fn show_origin(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 
     commands
         .spawn_bundle(SpriteBundle {

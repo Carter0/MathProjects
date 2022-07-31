@@ -14,9 +14,7 @@ fn main() {
 struct Rect;
 
 fn add_rectangle(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert_bundle(OrthographicCameraBundle::new_2d());
+    commands.spawn_bundle(Camera2dBundle::default());
 
     commands
         .spawn_bundle(SpriteBundle {

@@ -3,20 +3,20 @@ use bevy::prelude::*;
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_startup_system(show_origin)
+        .add_startup_system(setup)
         .add_startup_system(add_player)
         .add_system(move_player)
         .add_system(rotate_player)
         .add_system(local_to_global_transform)
-        .add_system(modify_local_to_global_rect)
         .run();
 }
 
+#[derive(Component)]
+struct LocalToGlobalRect;
+
 // Show origin of the screen for easier visualization
-fn show_origin(mut commands: Commands) {
-    commands
-        .spawn()
-        .insert_bundle(OrthographicCameraBundle::new_2d());
+fn setup(mut commands: Commands) {
+    commands.spawn_bundle(Camera2dBundle::default());
 
     commands.spawn_bundle(SpriteBundle {
         sprite: Sprite {
@@ -25,6 +25,16 @@ fn show_origin(mut commands: Commands) {
         },
         ..Default::default()
     });
+
+    commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                custom_size: Some(Vec2::new(1.0, 1.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .insert(LocalToGlobalRect);
 }
 
 #[derive(Component)]
@@ -120,17 +130,12 @@ fn rotate_player(
     ));
 }
 
-#[derive(Component)]
-struct LocalToGlobalRect {
-    vector_from_origin: Vec2,
-}
-
 // Find the global transform of the rectangle given the local transform from the player parent.
 // The default transform is the transform relative to its parent position, so its local for the rect
 fn local_to_global_transform(
     rect_query: Query<&Transform, With<Rect>>,
     player_query: Query<&Transform, (With<Player>, Without<Rect>)>,
-    mut commands: Commands,
+    mut local_to_global_rect_query: Query<&mut Transform, (With<LocalToGlobalRect>, Without<Player>, Without<Rect>)>,
 ) {
     let rect_local_transform = rect_query.get_single().expect("Could not find single rect");
 
@@ -138,42 +143,28 @@ fn local_to_global_transform(
         .get_single()
         .expect("Could not find a single player");
 
+    let mut origin_to_rect_transform = local_to_global_rect_query
+        .get_single_mut()
+        .expect("Cannot find global to local rect");
+
     let x_vector = rect_local_transform.local_x() * rect_local_transform.translation.x;
     let y_vector = rect_local_transform.local_y() * rect_local_transform.translation.y;
     let rect_vector_from_player = x_vector + y_vector;
 
     let rect_vector_from_origin = rect_vector_from_player + player_transform.translation;
 
-    // TODO you are running into issues because this needs to be spawned with default data
-    // I need to take a break haha, but good job anyway, you are close
-    commands
-        .spawn_bundle(SpriteBundle {
-            sprite: Sprite {
-                custom_size: Some(Vec2::new(1.0, 1.0)),
-                ..Default::default()
-            },
-            transform: Transform::from_translation(Vec3::new(
-                // Spawn the rect at the midpoint because scaling a transform occures in the middle
-                rect_vector_from_origin.x / 2.0,
-                rect_vector_from_origin.y / 2.0,
-                0.0,
-            )),
-            ..Default::default()
-        })
-        .insert(LocalToGlobalRect {
-            vector_from_origin: rect_vector_from_origin.truncate(),
-        });
-}
+    // Put the rect at the midpoint because scaling a transform occures in the middle
+    origin_to_rect_transform.translation.x = rect_vector_from_origin.x / 2.0;
+    origin_to_rect_transform.translation.y = rect_vector_from_origin.y / 2.0;
 
-fn modify_local_to_global_rect(
-    mut local_to_global_rect_query: Query<(&mut Transform, &LocalToGlobalRect)>,
-) {
-    let (mut transform, local_to_global_rect) = local_to_global_rect_query
-        .get_single_mut()
-        .expect("Cannot find global to local rect");
+    // TODO
+    // I think something is wrong with the math, but I do think you are close.
+    // I think you first need to rotate the vector so that it is always facing the rect
+    let distance_vec_magnitude = origin_to_rect_transform.translation.length();
+    origin_to_rect_transform.scale.y = distance_vec_magnitude / 2.0;
 
-    let distance_vec_magnitude = local_to_global_rect.vector_from_origin.length();
-    transform.scale.y += distance_vec_magnitude / 2.0;
+    origin_to_rect_transform.look_at(-Vec3::Z, Vec3::new(rect_vector_from_origin.x, rect_vector_from_origin.y, 0.0));
+    println!("Scale of the vector {}", origin_to_rect_transform.scale.y);
 }
 
 // TODO
