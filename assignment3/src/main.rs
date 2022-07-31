@@ -1,5 +1,10 @@
 use bevy::prelude::*;
 
+// NOTE I think I am going to put this on hold for now. I think I got the general concept,
+// and I think I am wasting more time on this than it is really worth.
+// Perhaps I should come back after I learn more about rotation.
+
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
