@@ -4,6 +4,11 @@ use bevy_rapier2d::prelude::*;
 const WINDOWHEIGHT: f32 = 1000.0;
 const WINDOWWIDTH: f32 = 1200.0;
 
+
+// NOTE
+// Maybe come back to this one day, but for now I think this is good enough
+// Good job!
+
 fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
@@ -55,10 +60,7 @@ fn setup(mut commands: Commands) {
             transform: Transform::from_xyz(0.0, WINDOWHEIGHT / 2.0, 1.0),
             ..Default::default()
         })
-        .insert(Collider::cuboid(
-            ceiling_size_x / 2.0,
-            ceiling_size_y / 2.0,
-        ));
+        .insert(Collider::cuboid(ceiling_size_x / 2.0, ceiling_size_y / 2.0));
 
     // The floor
     let floor_size_x = WINDOWWIDTH;
@@ -186,32 +188,64 @@ fn rotate_player(
     ));
 }
 
+// TODO
+// When you better understand how to make your ray rotate with the player
+// you can come back to this
 fn cast_ray(
     rapier_context: Res<RapierContext>,
-    player_query: Query<(&Transform, Entity), With<Player>>,
+    player_query: Query<(&Transform, With<Player>>,
+    mut commands: Commands,
+    keyboard_input: Res<Input<KeyCode>>,
 ) {
-    let (transform, entity) = player_query
-        .get_single()
-        .expect("Could not find a single player");
+    if keyboard_input.pressed(KeyCode::Space) {
+        let transform = player_query
+            .get_single()
+            .expect("Could not find a single player");
 
-    println!("player id is {:?}", entity);
+        let ray_pos = Vec2::new(transform.translation.x, transform.translation.y + 17.0);
+        // Ray moves diagonally
+        let ray_vec = Vec2::new(80.0, 80.0);
+        let max_toi = 1.0;
+        let solid = false;
+        let filter = QueryFilter::default();
+        if let Some((_entity, intersection)) =
+            rapier_context.cast_ray_and_get_normal(ray_pos, ray_vec, max_toi, solid, filter)
+        {
+            // This is similar to `QueryPipeline::cast_ray` illustrated above except
+            // that it also returns the normal of the collider shape at the hit point.
+            let hit_point: Vect = intersection.point;
+            let hit_normal: Vect = intersection.normal;
 
-    // TODO you almost got it (I think), you dealing with spaces, with is confusing you.
-    let ray_pos = Vec2::new(transform.translation.x, transform.translation.y + 17.0);
-    let ray_dir = Vec2::new(0.0, 1.0);
-    let max_toi = 80.0;
-    let solid = false;
-    let filter = QueryFilter::default();
-    if let Some((entity, intersection)) =
-        rapier_context.cast_ray_and_get_normal(ray_pos, ray_dir, max_toi, solid, filter)
-    {
-        // This is similar to `QueryPipeline::cast_ray` illustrated above except
-        // that it also returns the normal of the collider shape at the hit point.
-        let hit_point = intersection.point;
-        let hit_normal = intersection.normal;
-        println!(
-            "Entity {:?} hit at point {} with normal {}",
-            entity, hit_point, hit_normal
-        );
+            // spawn a rect at the point of contact
+            commands.spawn_bundle(SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(4.0, 4.0)),
+                    ..Default::default()
+                },
+                transform: Transform::from_translation(hit_point.extend(0.0)),
+                ..Default::default()
+            });
+
+            let projected_ray_onto_normal: Vec2 = hit_normal.dot(ray_vec) * hit_normal;
+
+            // Remember a vector does not have a position, it has a direction and a magnitude.
+            let reflected_vec = ray_vec - (2.0 * projected_ray_onto_normal);
+
+            // add the contact point to get the position
+            let reflected_pos = hit_point + reflected_vec;
+
+            println!("ray vec is {}", ray_vec);
+            println!("Reflected pos is {}", reflected_pos);
+            println!("Reflected vec is {}", reflected_vec);
+
+            commands.spawn_bundle(SpriteBundle {
+                sprite: Sprite {
+                    custom_size: Some(Vec2::new(4.0, 4.0)),
+                    ..Default::default()
+                },
+                transform: Transform::from_translation(reflected_pos.extend(0.0)),
+                ..Default::default()
+            });
+        }
     }
 }
