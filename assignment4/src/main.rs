@@ -4,7 +4,6 @@ use bevy_rapier2d::prelude::*;
 const WINDOWHEIGHT: f32 = 1000.0;
 const WINDOWWIDTH: f32 = 1200.0;
 
-
 // NOTE
 // Maybe come back to this one day, but for now I think this is good enough
 // Good job!
@@ -193,7 +192,7 @@ fn rotate_player(
 // you can come back to this
 fn cast_ray(
     rapier_context: Res<RapierContext>,
-    player_query: Query<(&Transform, With<Player>>,
+    player_query: Query<&Transform, With<Player>>,
     mut commands: Commands,
     keyboard_input: Res<Input<KeyCode>>,
 ) {
